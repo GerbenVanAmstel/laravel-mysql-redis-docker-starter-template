@@ -1,0 +1,95 @@
+x-environment: &environment
+  EXTRA: 1
+  TZ: 'Europe/Amsterdam'
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - internal
+    volumes:
+      - .:/var/www/html/
+      - ./logs/nginx:/var/log/nginx/
+    container_name: nginx
+    environment:
+      <<: *environment
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    networks:
+      - internal
+    volumes:
+      - .:/var/www/html/
+      - ./logs/php.log:/var/log/fpm-php.www.log
+    container_name: php
+    expose:
+      - "9000"
+    environment:
+      <<: *environment
+  mysql:
+    container_name: db
+    restart: always
+    image: mysql:latest
+    platform: linux/x86_64
+    expose:
+      - "3306"
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      <<: *environment
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: user
+      MYSQL_PASSWORD: user
+      MYSQL_ROOT_PASSWORD: root
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./db-data:/var/lib/mysql
+    networks:
+      - internal
+  mysql-testing:
+      container_name: db_testing
+      restart: always
+      image: mysql:latest
+      platform: linux/x86_64
+      expose:
+          - "3306"
+      ports:
+          - "127.0.0.1:8011:3306"
+      environment:
+          <<: *environment
+          MYSQL_DATABASE: laravel
+          MYSQL_USER: user
+          MYSQL_PASSWORD: user
+          MYSQL_ROOT_PASSWORD: root
+          SERVICE_TAGS: dev
+          SERVICE_NAME: mysql
+      volumes:
+          - ./db-testing-data:/var/lib/mysql
+      networks:
+          - internal
+  redis:
+    container_name: redis
+    image: redis:6-alpine
+    environment:
+        <<: *environment
+    networks:
+        internal:
+    expose:
+      - "6379"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+volumes:
+    db-data:
+    db-testing-data:
+    redis-data:
+networks:
+  internal:
+    driver: bridge
